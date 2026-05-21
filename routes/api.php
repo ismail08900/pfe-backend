@@ -152,7 +152,7 @@ Route::get('/email/verify/{id}/{hash}', function ($id, $hash) {
         event(new Verified($user));
     }
 
-    return Redirect::to('http://localhost:5173/email-verified');
+    return Redirect::to('https://pfe-frontend-neon.vercel.app/email-verified');
 })->middleware(['signed'])->name('verification.verify');
 
 Route::get('/dishes-public', function () {
