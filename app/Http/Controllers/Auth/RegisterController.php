@@ -51,8 +51,10 @@ class RegisterController extends Controller
             "weight_target" => $validated["weight_target"] ?? null,
             "custom_diet" => $validated["custom_diet"] ?? null,
             "custom_allergy" => $validated["custom_allergy"] ?? null,
-            "email_verified_at" => now(), // Auto-vérification pour le déploiement
         ]);
+
+        $user->email_verified_at = now();
+        $user->save();
 
         if (!empty($validated["allergy_ids"])) {
             $user->allergies()->sync($validated["allergy_ids"]);
