@@ -38,6 +38,22 @@ Route::get("/tables-info", function () {
     }
 });
 
+Route::get('/init-db', function () {
+    try {
+        echo "Running migrations...<br>";
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        echo str_replace("\n", "<br>", \Illuminate\Support\Facades\Artisan::output()) . "<br>";
+
+        echo "Running seeders...<br>";
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+        echo str_replace("\n", "<br>", \Illuminate\Support\Facades\Artisan::output()) . "<br>";
+
+        return "Database initialized successfully!";
+    } catch (\Exception $e) {
+        return "Error: " . $e->getMessage();
+    }
+});
+
 
 Route::post('/register', [RegisterController::class, 'register']);
 Route::post('/login', [LoginController::class, 'login']);
