@@ -85,7 +85,7 @@ class AIController extends Controller
         
         $params = [
             'apiKey' => env('SPOONACULAR_API_KEY'),
-            'number' => 20, // Fetch enough recipes for a week
+            'number' => 40, // Fetch enough recipes for a week
             'addRecipeNutrition' => 'true',
             'type' => 'main course,breakfast,snack',
         ];
@@ -103,7 +103,7 @@ class AIController extends Controller
                     'title' => $r['title'],
                     'image' => $r['image'] ?? '',
                     'readyInMinutes' => $r['readyInMinutes'] ?? 30,
-                    'calories' => $r['nutrition']['nutrients'][0]['amount'] ?? 0 // Just an approximation for the AI
+                    'calories' => collect($r['nutrition']['nutrients'] ?? [])->firstWhere('name', 'Calories')['amount'] ?? 0 // Just an approximation for the AI
                 ];
             }
         }
