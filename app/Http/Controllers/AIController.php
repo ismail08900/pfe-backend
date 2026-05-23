@@ -17,6 +17,12 @@ class AIController extends Controller
         $this->whatsappService = $whatsappService;
     }
 
+    public function testGemini(Request $request)
+    {
+        $recipe = $this->aiService->generateRecipe(["tomates"], "", "");
+        return response()->json(['result' => $recipe]);
+    }
+
     public function chat(Request $request)
     {
         $request->validate([
