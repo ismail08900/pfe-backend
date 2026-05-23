@@ -1,13 +1,10 @@
 #!/bin/sh
 
-# Exit immediately if a command exits with a non-zero status
-set -e
-
 # Cache configuration, routes and views for production
 echo "Caching Laravel configuration..."
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+php artisan config:cache || echo "Config cache failed, continuing..."
+php artisan route:cache || echo "Route cache failed, continuing..."
+php artisan view:cache || echo "View cache failed, continuing..."
 
 # Start PHP-FPM in the background
 echo "Starting PHP-FPM..."
