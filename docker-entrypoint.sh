@@ -13,6 +13,10 @@ php artisan view:cache
 echo "Running database migrations..."
 php artisan migrate --force
 
+# Seed database
+echo "Seeding database..."
+php artisan db:seed --force
+
 # Start PHP-FPM in the background
 echo "Starting PHP-FPM..."
 php-fpm -D
