@@ -53,15 +53,19 @@ class RegisterController extends Controller
             "custom_allergy" => $validated["custom_allergy"] ?? null,
         ]);
 
+        $user->email_verified_at = now();
+        $user->save();
+
         if (!empty($validated["allergy_ids"])) {
             $user->allergies()->sync($validated["allergy_ids"]);
         }
 
-        // Envoi de l'email de vérification
-        event(new Registered($user));
-        $token = $user->createToken('verify-email')->plainTextToken;
+        // Désactivation de l'envoi d'email car pas de SMTP configuré sur Railway
+        // event(new Registered($user));
+        $token = $user->createToken('main')->plainTextToken;
 
-        // NE PAS connecter l'utilisateur ici (pas de token), attendre qu'il ait validé son email
+        // Connexion immédiate vu qu'on a auto-vérifié
+
         return response()->json([
             "message" => "Inscription réussie. Un email de vérification a été envoyé. Veuillez vérifier votre boîte de réception.",
             "token" => $token,
