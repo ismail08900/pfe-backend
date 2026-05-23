@@ -127,6 +127,7 @@ Route::middleware('auth:sanctum', EnsureEmailIsVerified::class)->group(function 
 });
 
 Route::get('/ai-test', [App\Http\Controllers\AIController::class, 'testGemini']);
+Route::get('/ai-planning-test', [App\Http\Controllers\AIController::class, 'testGeminiPlanning']);
 
 // Pour que le front puisse charger les options :
 Route::get('/allergies', fn() => Allergy::all());

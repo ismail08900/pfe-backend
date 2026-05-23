@@ -23,6 +23,43 @@ class AIController extends Controller
         return response()->json(['result' => $recipe]);
     }
 
+    public function testGeminiPlanning(Request $request)
+    {
+        $userProfile = [
+            'goal' => 'Manger équilibré',
+            'diet' => 'Standard',
+            'allergies' => 'Aucune',
+            'activityLevel' => 'Sédentaire'
+        ];
+
+        $params = [
+            'apiKey' => env('SPOONACULAR_API_KEY'),
+            'number' => 5,
+            'addRecipeNutrition' => 'true',
+            'type' => 'main course,breakfast,snack',
+        ];
+
+        $response = \Illuminate\Support\Facades\Http::get('https://api.spoonacular.com/recipes/complexSearch', $params);
+        $siteRecipes = [];
+        if ($response->successful()) {
+            $recipes = $response->json()['results'] ?? [];
+            foreach ($recipes as $r) {
+                $siteRecipes[] = [
+                    'id' => $r['id'],
+                    'title' => $r['title'],
+                    'image' => $r['image'] ?? '',
+                    'readyInMinutes' => $r['readyInMinutes'] ?? 30,
+                    'calories' => collect($r['nutrition']['nutrients'] ?? [])->firstWhere('name', 'Calories')['amount'] ?? 0
+                ];
+            }
+        } else {
+            return response()->json(['error' => 'Spoonacular failed', 'status' => $response->status(), 'body' => $response->body()], 500);
+        }
+
+        $planning = $this->aiService->generateMealPlan($userProfile, [], $siteRecipes);
+        return response()->json(['result' => $planning]);
+    }
+
     public function chat(Request $request)
     {
         $request->validate([
