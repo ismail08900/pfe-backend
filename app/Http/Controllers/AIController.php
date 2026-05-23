@@ -99,7 +99,7 @@ class AIController extends Controller
             return response()->json([
                 'results' => [$recipe] // Format similaire à Spoonacular pour faciliter l'intégration côté front
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'error' => $e->getMessage()
             ], 500);
@@ -128,6 +128,19 @@ class AIController extends Controller
             }
 
             $currentPlanning = $request->input('current_planning', []);
+            $cleanedPlanning = [];
+            if (is_array($currentPlanning)) {
+                foreach ($currentPlanning as $day => $data) {
+                    if (isset($data['meals']) && is_array($data['meals'])) {
+                        $validMeals = array_filter($data['meals'], function($meal) {
+                            return !is_null($meal) && !empty($meal);
+                        });
+                        if (!empty($validMeals)) {
+                            $cleanedPlanning[$day] = ['meals' => array_values($validMeals)];
+                        }
+                    }
+                }
+            }
 
             // Fetch real recipes from Spoonacular to give to Gemini
             $diet = $userProfile['diet'] !== 'Standard' ? $userProfile['diet'] : '';
@@ -160,14 +173,14 @@ class AIController extends Controller
                 throw new \Exception("Erreur Spoonacular: " . $response->body());
             }
 
-            $planning = $this->aiService->generateMealPlan($userProfile, $currentPlanning, $siteRecipes);
+            $planning = $this->aiService->generateMealPlan($userProfile, $cleanedPlanning, $siteRecipes);
 
             if (isset($planning['error'])) {
                 return response()->json(['error' => $planning['error']], 500);
             }
 
             return response()->json($planning);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json([
                 'error' => $e->getMessage(),
                 'line' => $e->getLine(),
