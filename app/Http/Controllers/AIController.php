@@ -148,7 +148,7 @@ class AIController extends Controller
             
             $params = [
                 'apiKey' => env('SPOONACULAR_API_KEY'),
-                'number' => 40, // Fetch enough recipes for a week
+                'number' => 14, // Réduire à 14 pour éviter Timeout / OutOfMemory
                 'addRecipeNutrition' => 'true',
                 'type' => 'main course,breakfast,snack',
             ];
@@ -171,6 +171,12 @@ class AIController extends Controller
                 }
             } else {
                 throw new \Exception("Erreur Spoonacular: " . $response->body());
+            }
+
+            if (empty($siteRecipes)) {
+                return response()->json([
+                    'error' => "Spoonacular n'a trouvé aucune recette pour vos préférences (Régime/Allergies). L'IA ne peut pas générer de planning."
+                ], 400);
             }
 
             $planning = $this->aiService->generateMealPlan($userProfile, $cleanedPlanning, $siteRecipes);
