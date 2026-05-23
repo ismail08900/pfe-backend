@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 class AIService
 {
     protected string $apiKey;
-    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
     public function __construct()
     {
@@ -20,8 +20,36 @@ class AIService
         // Format history for Gemini
         $contents = [];
         
-        // System instruction (we simulate this by prepending a system message if needed, or just context in the prompt)
-        $systemContext = "Tu es un diététicien expert et bienveillant pour l'application Eatwise. Tu aides les utilisateurs à manger sainement, réponds à leurs questions sur la nutrition, et donnes des conseils personnalisés. Sois concis et utilise des émojis.";
+        $systemContext = "Tu es un diététicien expert et bienveillant pour l'application Eatwise. Tu aides les utilisateurs à manger sainement.
+IMPORTANT: 
+À chaque fois que tu proposes un ou plusieurs repas (que ce soit pour un seul repas ou toute une journée), tu DOIS inclure à la TOUTE FIN de ton message un bloc JSON valide (entouré de ```json et ```) contenant la liste des repas que tu viens de proposer. 
+Chaque repas doit indiquer le jour (lundi, mardi, mercredi, jeudi, vendredi, samedi, dimanche) et le type de repas (breakfast, lunch, dinner, snack). 
+Si l'utilisateur ne précise pas le jour, choisis par défaut 'lundi' ou le jour pertinent.
+
+Exemple de bloc JSON attendu à la fin de ton message :
+```json
+[
+  {
+    \"title\": \"Blanc de poulet et quinoa\",
+    \"day\": \"lundi\",
+    \"meal\": \"lunch\",
+    \"calories\": 450,
+    \"protein\": 35,
+    \"carbs\": 45,
+    \"fat\": 15
+  },
+  {
+    \"title\": \"Pavé de saumon\",
+    \"day\": \"lundi\",
+    \"meal\": \"dinner\",
+    \"calories\": 500,
+    \"protein\": 30,
+    \"carbs\": 20,
+    \"fat\": 25
+  }
+]
+```
+Ne mets rien d'autre après ce bloc JSON.";
 
         // For Gemini, alternating user and model messages
         $contents[] = [
@@ -33,11 +61,24 @@ class AIService
             'parts' => [['text' => 'Compris. Je suis prêt à t\'aider !']]
         ];
 
+        // Merge consecutive roles to satisfy Gemini's strict alternating roles requirement
         foreach ($history as $msg) {
-            $contents[] = [
-                'role' => $msg['sender'] === 'user' ? 'user' : 'model',
-                'parts' => [['text' => $msg['text']]]
-            ];
+            $role = $msg['sender'] === 'user' ? 'user' : 'model';
+            $text = $msg['text'];
+            
+            if (empty($text)) {
+                continue;
+            }
+
+            if (!empty($contents) && $contents[count($contents) - 1]['role'] === $role) {
+                // Append text to the previous message of the same role
+                $contents[count($contents) - 1]['parts'][0]['text'] .= "\n\n" . $text;
+            } else {
+                $contents[] = [
+                    'role' => $role,
+                    'parts' => [['text' => $text]]
+                ];
+            }
         }
 
         $contents[] = [
@@ -89,8 +130,11 @@ class AIService
 
         $responseJsonString = $this->callGemini($contents);
         
-        // Nettoyer la réponse si elle contient des backticks markdown (```json ... ```)
-        $responseJsonString = preg_replace('/```json\s*(.*?)\s*```/s', '$1', $responseJsonString);
+        if (preg_match('/```(?:json)?\s*(\{.*\}|\[.*\])\s*```/s', $responseJsonString, $matches)) {
+            $responseJsonString = $matches[1];
+        } elseif (preg_match('/(\{.*\}|\[.*\])/s', $responseJsonString, $matches)) {
+            $responseJsonString = $matches[0];
+        }
         
         $decoded = json_decode($responseJsonString, true);
         if (!$decoded) {
@@ -146,7 +190,11 @@ class AIService
         ];
 
         $responseJsonString = $this->callGemini($contents);
-        $responseJsonString = preg_replace('/```json\s*(.*?)\s*```/s', '$1', $responseJsonString);
+        if (preg_match('/```(?:json)?\s*(\{.*\}|\[.*\])\s*```/s', $responseJsonString, $matches)) {
+            $responseJsonString = $matches[1];
+        } elseif (preg_match('/(\{.*\}|\[.*\])/s', $responseJsonString, $matches)) {
+            $responseJsonString = $matches[0];
+        }
         
         $decoded = json_decode($responseJsonString, true);
         if (!$decoded) {
@@ -159,19 +207,27 @@ class AIService
 
     protected function callGemini(array $contents): string
     {
-        $response = Http::timeout(120)->post($this->baseUrl . '?key=' . $this->apiKey, [
-            'contents' => $contents,
-            'generationConfig' => [
-                'temperature' => 0.7,
-            ]
-        ]);
+        try {
+            $response = Http::timeout(120)->post($this->baseUrl . '?key=' . $this->apiKey, [
+                'contents' => $contents,
+                'generationConfig' => [
+                    'temperature' => 0.7,
+                ]
+            ]);
 
-        if ($response->successful()) {
-            $data = $response->json();
-            return $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            if ($response->successful()) {
+                return $response->json('candidates.0.content.parts.0.text');
+            }
+
+            if ($response->status() === 429) {
+                return "Je reçois un peu trop de messages en ce moment. Veuillez patienter une petite minute avant de me reparler !";
+            }
+
+            Log::error("Erreur API Gemini", ['response' => $response->body()]);
+            return "Désolé, je rencontre une erreur de connexion à l'intelligence artificielle.";
+        } catch (\Exception $e) {
+            Log::error("Exception API Gemini: " . $e->getMessage());
+            return "Désolé, je rencontre une erreur de connexion à l'intelligence artificielle.";
         }
-
-        Log::error("Erreur API Gemini", ['response' => $response->body()]);
-        return "Désolé, je rencontre une erreur de connexion à l'intelligence artificielle.";
     }
 }
