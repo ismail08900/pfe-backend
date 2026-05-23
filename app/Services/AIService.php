@@ -146,8 +146,12 @@ Ne mets rien d'autre après ce bloc JSON.";
         }
         
         // Générer un ID unique temporaire pour la recette IA
-        $decoded['id'] = 'ai_' . uniqid();
+        $recipeId = 'ai_' . uniqid();
+        $decoded['id'] = $recipeId;
         $decoded['image'] = 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&q=80&w=800'; // Image générique par défaut
+
+        // Cache la recette pendant 24 heures pour pouvoir la consulter via l'ID
+        \Illuminate\Support\Facades\Cache::put('ai_recipe_' . $recipeId, $decoded, now()->addDay());
 
         return $decoded;
     }

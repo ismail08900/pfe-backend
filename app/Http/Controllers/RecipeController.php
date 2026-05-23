@@ -270,6 +270,15 @@ class RecipeController extends Controller
 
     public function getRecipeDetails($id)
     {
+        // Si l'ID commence par 'ai_', on récupère la recette depuis le cache
+        if (str_starts_with($id, 'ai_')) {
+            $recipe = \Illuminate\Support\Facades\Cache::get('ai_recipe_' . $id);
+            if ($recipe) {
+                return response()->json($recipe);
+            }
+            return response()->json(['error' => 'Recette IA introuvable ou expirée.'], 404);
+        }
+
         $params = [
             'apiKey' => env('SPOONACULAR_API_KEY'),
             'includeNutrition' => 'true',
