@@ -126,10 +126,7 @@ Route::middleware('auth:sanctum', EnsureEmailIsVerified::class)->group(function 
     Route::post('/planning/send-whatsapp', [App\Http\Controllers\AIController::class, 'sendPlanningWhatsApp']);
 });
 
-
-
-
-
+Route::get('/ai-test', [App\Http\Controllers\AIController::class, 'testGemini']);
 
 // Pour que le front puisse charger les options :
 Route::get('/allergies', fn() => Allergy::all());
