@@ -130,13 +130,21 @@ class AIController extends Controller
             $currentPlanning = $request->input('current_planning', []);
             $cleanedPlanning = [];
             if (is_array($currentPlanning)) {
-                foreach ($currentPlanning as $day => $data) {
-                    if (isset($data['meals']) && is_array($data['meals'])) {
-                        $validMeals = array_filter($data['meals'], function($meal) {
-                            return !is_null($meal) && !empty($meal);
-                        });
-                        if (!empty($validMeals)) {
-                            $cleanedPlanning[$day] = ['meals' => array_values($validMeals)];
+                foreach ($currentPlanning as $day => $meals) {
+                    if (is_array($meals)) {
+                        $hasMeals = false;
+                        $dayMeals = [];
+                        foreach (['breakfast', 'lunch', 'dinner', 'snack'] as $mealType) {
+                            $meal = $meals[$mealType] ?? null;
+                            if (!is_null($meal) && !empty($meal)) {
+                                $hasMeals = true;
+                                $dayMeals[] = $meal;
+                            } else {
+                                $dayMeals[] = null;
+                            }
+                        }
+                        if ($hasMeals) {
+                            $cleanedPlanning[$day] = ['meals' => $dayMeals];
                         }
                     }
                 }
