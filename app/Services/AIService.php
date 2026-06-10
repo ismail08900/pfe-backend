@@ -203,7 +203,7 @@ Ne mets rien d'autre après ce bloc JSON.";
         $decoded = json_decode($responseJsonString, true);
         if (!$decoded) {
             Log::error("Erreur JSON Gemini Planning : " . $responseJsonString);
-            return ['error' => 'Erreur lors de la génération du planning'];
+            return ['error' => 'Erreur JSON ou IA : ' . substr($responseJsonString, 0, 200)];
         }
 
         return $decoded;
@@ -211,27 +211,41 @@ Ne mets rien d'autre après ce bloc JSON.";
 
     protected function callGemini(array $contents): string
     {
-        try {
-            $response = Http::timeout(120)->post($this->baseUrl . '?key=' . $this->apiKey, [
-                'contents' => $contents,
-                'generationConfig' => [
-                    'temperature' => 0.7,
-                ]
-            ]);
+        // gemini-3.5-flash is the only model available with this API key
+        // (2.0 models have exhausted free tier, 1.5 is deprecated)
+        $models = [
+            'gemini-3.5-flash',
+        ];
 
-            if ($response->successful()) {
-                return $response->json('candidates.0.content.parts.0.text');
+        foreach ($models as $model) {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . $this->apiKey;
+
+            try {
+                $response = Http::timeout(45)->post($url, [
+                    'contents' => $contents,
+                    'generationConfig' => [
+                        'temperature' => 0.7,
+                    ]
+                ]);
+
+                if ($response->successful()) {
+                    return $response->json('candidates.0.content.parts.0.text');
+                }
+
+                // On 429/503, skip to next model immediately
+                if (in_array($response->status(), [429, 503])) {
+                    Log::warning("Gemini {$model} returned {$response->status()}, trying next model...");
+                    continue;
+                }
+
+                Log::error("Erreur API Gemini ({$model})", ['response' => $response->body()]);
+                return "Erreur API Gemini ({$model}): " . $response->status() . " - " . $response->body();
+            } catch (\Exception $e) {
+                Log::error("Exception API Gemini ({$model}): " . $e->getMessage());
+                return "Exception API Gemini: " . $e->getMessage();
             }
-
-            if ($response->status() === 429) {
-                return "Je reçois un peu trop de messages en ce moment. Veuillez patienter une petite minute avant de me reparler !";
-            }
-
-            Log::error("Erreur API Gemini", ['response' => $response->body()]);
-            return "Désolé, je rencontre une erreur de connexion à l'intelligence artificielle.";
-        } catch (\Exception $e) {
-            Log::error("Exception API Gemini: " . $e->getMessage());
-            return "Désolé, je rencontre une erreur de connexion à l'intelligence artificielle.";
         }
+
+        return "Erreur inconnue dans callGemini";
     }
 }

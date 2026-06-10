@@ -156,14 +156,14 @@ class AIController extends Controller
             
             $params = [
                 'apiKey' => env('SPOONACULAR_API_KEY'),
-                'number' => 14, // Réduire à 14 pour éviter Timeout / OutOfMemory
+                'number' => 10,
                 'addRecipeNutrition' => 'true',
                 'type' => 'main course,breakfast,snack',
             ];
             if ($diet) $params['diet'] = $diet;
             if ($allergies) $params['intolerances'] = $allergies;
 
-            $response = \Illuminate\Support\Facades\Http::get('https://api.spoonacular.com/recipes/complexSearch', $params);
+            $response = \Illuminate\Support\Facades\Http::timeout(10)->get('https://api.spoonacular.com/recipes/complexSearch', $params);
             $siteRecipes = [];
             
             if ($response->successful()) {
