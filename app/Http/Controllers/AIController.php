@@ -127,6 +127,8 @@ class AIController extends Controller
                 ];
             }
 
+            set_time_limit(120); // Empêche PHP de couper si Gemini met plus de 30 secondes
+            
             $currentPlanning = $request->input('current_planning', []);
             $cleanedPlanning = [];
             if (is_array($currentPlanning)) {
@@ -138,6 +140,7 @@ class AIController extends Controller
                             $meal = $meals[$mealType] ?? null;
                             if (!is_null($meal) && !empty($meal)) {
                                 $hasMeals = true;
+                                if (isset($meal['image'])) unset($meal['image']); // Optimisation très importante
                                 $dayMeals[] = $meal;
                             } else {
                                 $dayMeals[] = null;
