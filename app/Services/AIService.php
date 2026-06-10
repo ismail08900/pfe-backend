@@ -221,7 +221,7 @@ Ne mets rien d'autre après ce bloc JSON.";
             $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . $this->apiKey;
 
             try {
-                $response = Http::timeout(45)->post($url, [
+                $response = Http::timeout(90)->post($url, [
                     'contents' => $contents,
                     'generationConfig' => [
                         'temperature' => 0.7,
